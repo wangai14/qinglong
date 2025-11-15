@@ -1,24 +1,40 @@
 #!/bin/bash
 
-# Add ~/bin to PATH for non-root users
+log_with_style() {
+  local level="$1"
+  local message="$2"
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  printf "\n[%s] [%7s]  %s\n" "${timestamp}" "${level}" "${message}"
+}
+
+if [[ -n "$USERNAME" ]] && [[ -n "$USERID" ]]; then
+  log_with_style "INFO" "🚀 0. 创建用户: $USERNAME uid=$USERID"
+
+  useradd -u "$USERID" "$USERNAME" 2>/dev/null || true
+
+  HOME_DIR="/home/$USERNAME"
+
+  mkdir -p "$HOME_DIR/bin"
+  mkdir -p "$HOME_DIR/.ssh"
+
+  chmod 700 "$HOME_DIR/.ssh"
+  chown -R "$USERID:$USERID" "$HOME_DIR"
+
+  export HOME="$HOME_DIR"
+
+  # 切换用户重新执行当前脚本（递归一层）
+  exec su "$USERNAME" -s /bin/bash -c "env USERNAME=$USERNAME HOME=$HOME_DIR PATH=$PATH $0 $*"
+fi
+
+
 export PATH="$HOME/bin:$PATH"
 
 dir_shell=/ql/shell
 . $dir_shell/share.sh
 
 export_ql_envs() {
-  # Export BACK_PORT from QlPort for backend server to use
   export BACK_PORT="${ql_port}"
-  # Export GRPC_PORT from QlGrpcPort for gRPC server to use
   export GRPC_PORT="${ql_grpc_port}"
-}
-
-log_with_style() {
-  local level="$1"
-  local message="$2"
-  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  printf "\n[%s] [%7s]  %s\n" "${timestamp}" "${level}" "${message}"
 }
 
 log_with_style "INFO" "🚀 1. 检测配置文件..."
